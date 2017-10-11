@@ -1,4 +1,5 @@
 #include "common.h"
+#include "session.h"
 
 int main()
 {
@@ -9,6 +10,7 @@ int main()
         exit(EXIT_FAILURE);
     }
 
+    session_t sess = {-1, "", "", "", -1, -1};
     int listenfd = tcp_server(NULL, 5188);
     int conn;
     pid_t pid;
@@ -30,7 +32,9 @@ int main()
         if (0 == pid)
         {
             //子进程关闭监听套接字
-            close(listenfd); 
+            close(listenfd);
+            sess.ctrl_fd = conn;
+            begin_session(&sess); 
         }
         else
         {
