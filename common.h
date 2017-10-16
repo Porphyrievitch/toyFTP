@@ -13,6 +13,8 @@
 #include <sys/types.h>
 #include <netdb.h>
 
+#include <pwd.h>
+
 #define ERR_EXIT(e)\
     do\
     {\

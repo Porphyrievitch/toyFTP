@@ -99,42 +99,55 @@ int write_timeout(int fd, unsigned int wait_seconds)
 	return ret;
 }
 
+//连接成功返回连接套接字
 int accept_timeout(int fd, struct sockaddr_in *addr, unsigned int wait_seconds)
 {
-	int ret;
-	socklen_t addrlen=sizeof(struct sockaddr_in);
-	
-	if(wait_seconds > 0)
-	{
-		fd_set accept_fdset;
-		struct timeval timeout;
-		
-		FD_ZERO(&accept_fdset);
-		FD_SET(fd, &accept_fdset);
-		
-		timeout.tv_sec=wait_seconds;
-		timeout.tv_usec=0;
-		do
-		{
-			ret=select(fd+1, &accept_fdset, NULL, NULL, &timeout);
-		}while(ret<0 && errno==EINTR);
+    int ret;
+    socklen_t addrlen = sizeof(struct sockaddr_in);
+    
+    if(wait_seconds > 0)
+    {
+        fd_set accept_fdset;
+        struct timeval timeout;
+    	
+        FD_ZERO(&accept_fdset);
+        FD_SET(fd, &accept_fdset);
+    	
+        timeout.tv_sec = wait_seconds;
+        timeout.tv_usec = 0;
+    
+    	do
+    	{
+            ret=select(fd+1, &accept_fdset, NULL, NULL, &timeout);
+    	}
+        while(ret<0 && errno==EINTR);
+    
+        if (ret == -1)
+        {
+            return -1;
+        }
+    	else if(ret == 0)
+    	{
+            errno=ETIMEDOUT;
+            return -1;
+    	}
+    }
+    
+    if(addr != NULL)
+    {
+        ret = accept(fd, (struct sockaddr*)addr, &addrlen);
+    }
+    else
+    {
+        ret = accept(fd, NULL, NULL);
+    }
+ 
+    if(ret == -1)
+    {
+        ERR_EXIT("accept");
+    }
 
-		if(ret==-1)
-			return -1;
-		else if(ret==0)
-		{
-			errno=ETIMEDOUT;
-			return -1;
-		}
-	}
-
-	if(addr != NULL)
-		ret=accept(fd, (struct sockaddr*)addr, &addrlen);
-	else
-		ret=accept(fd, NULL, NULL);
-	if(ret==-1)
-		ERR_EXIT("accept");
-	return ret;
+    return ret;
 }
 
 int connect_timeout(int fd, struct sockaddr_in *addr, unsigned int wait_seconds)
@@ -388,46 +401,51 @@ int tcp_client(unsigned short port)
  */
 int tcp_server(const char* host, unsigned short port)
 {
-	int listenfd;
-	if( (listenfd=socket(PF_INET, SOCK_STREAM, 0)) < 0 )
-	{
-		ERR_EXIT("tcp_server");
-	}
-	
-	struct sockaddr_in servaddr;
-	memset(&servaddr, 0, sizeof(servaddr));
-	servaddr.sin_family = AF_INET;
-	if (NULL != host)
-	{
-                //为0表明是主机名格式
-		if ((inet_aton(host, &servaddr.sin_addr)) == 0)
-		{
-			struct hostent *hp;
-			hp = gethostbyname(host);
-			if(hp == NULL)
-				ERR_EXIT("gethostbyname");
-			servaddr.sin_addr=*(struct in_addr *)hp->h_addr;
-
-		}
-	}
-	else
-        {
-		servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
-        }
-
-	servaddr.sin_port = htons(port);
-
-	int on = 1;
-	if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on)) < 0)
-	{	
-		ERR_EXIT("gethostbyname");
-	}
-
-	if ((bind(listenfd, (struct sockaddr*)&servaddr, sizeof(servaddr)))<0)
-		ERR_EXIT("Bind");
-	if ((listen(listenfd, SOMAXCONN))<0)
-		ERR_EXIT("Listen");
-
-	return listenfd;
+    int listenfd;
+    if( (listenfd=socket(PF_INET, SOCK_STREAM, 0)) < 0 )
+    {
+    	ERR_EXIT("tcp_server");
+    }
+    
+    struct sockaddr_in servaddr;
+    memset(&servaddr, 0, sizeof(servaddr));
+    servaddr.sin_family = AF_INET;
+    if (NULL != host)
+    {
+            //为0表明是主机名格式
+    	if ((inet_aton(host, &servaddr.sin_addr)) == 0)
+    	{
+    		struct hostent *hp;
+    		hp = gethostbyname(host);
+    		if(hp == NULL)
+    			ERR_EXIT("gethostbyname");
+    		servaddr.sin_addr=*(struct in_addr *)hp->h_addr;
+    
+    	}
+    }
+    else
+    {
+    	servaddr.sin_addr.s_addr=htonl(INADDR_ANY);
+    }
+    
+    servaddr.sin_port = htons(port);
+    
+    int on = 1;
+    if (setsockopt(listenfd, SOL_SOCKET, SO_REUSEADDR, (const char*)&on, sizeof(on)) < 0)
+    {	
+    	ERR_EXIT("gethostbyname");
+    }
+    
+    if ((bind(listenfd, (struct sockaddr*)&servaddr, sizeof(servaddr))) < 0)
+    {
+        ERR_EXIT("Bind");
+    }
+    
+    if ((listen(listenfd, SOMAXCONN)) < 0)
+    {
+        ERR_EXIT("Listen");
+    }
+    
+    return listenfd;
 }
 

@@ -1,6 +1,6 @@
 .PHONY:clean
 CC=gcc
-CFLAG=-Wall -g
+CFLAGS=-Wall -g
 MAIN=toyFTP
 OBJS=main.o sysutil.o session.o ftpproto.o privparent.o
 
